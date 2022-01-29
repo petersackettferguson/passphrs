@@ -167,7 +167,9 @@ fn main() -> Result<()> {
             &salt_chars, 
             case);
 
-        println!("Sample passphrase: {}", sample_phrase);
+        println!("DO NOT USE THIS PASSPHRASE. Most shells log their history in an unencrypted file. Instead run this program in the standard mode to copy a passphrase directly to your clipboard.");
+        println!();
+        println!("Sample: {}", sample_phrase);
         let (entropy, equivalent) = entropy(word_list.len(), length, cli.salt_length, &salt_chars);
         println!("Entropy: {:.2}", entropy);
         println!("This is equivalent to a {:.2}-character password of random ASCII characters", equivalent);
