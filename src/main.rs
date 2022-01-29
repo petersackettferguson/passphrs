@@ -1,7 +1,6 @@
 use anyhow::Result;
 use clipboard::{ClipboardProvider, ClipboardContext};
 use clap::Parser;
-use directories::BaseDirs;
 use rand::prelude::*;
 use thiserror::Error;
 
@@ -147,24 +146,6 @@ fn main() -> Result<()> {
     let case = cli.case.clone();
 
     if cli.debug > 0 { eprintln!("{:?}", cli.clone()) };
-
-    let program_dir_result = {
-        if let Some(base_dirs) = BaseDirs::new() {
-            Ok(base_dirs.config_dir().join("passphrs"))
-        } else {
-            Err(PassphraseError::InitializationError(
-                    "Unable to determine base directories for your OS.".into()))
-        }
-    };
-
-    let program_dir = String::from(program_dir_result?.to_str()
-        .ok_or(PassphraseError::InitializationError("Unable to construct program dir".to_string()))?);
-
-    if cli.debug > 1 { eprintln!("program_dir: {:?}", program_dir) };
-
-    if let Err(err_) = std::fs::create_dir(&program_dir) {
-        if cli.debug > 0 { eprintln!("program_dir could not be created: {}", err_) };
-    };
 
     let word_list_result = get_list(
         cli.path.as_ref());
