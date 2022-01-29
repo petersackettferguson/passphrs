@@ -31,7 +31,7 @@ struct Cli {
     separator: String,
 
     /// Set salt length
-    #[clap(default_value_t = 0, long = "sl", parse(try_from_str))]
+    #[clap(default_value_t = 1, long = "sl", parse(try_from_str))]
     salt_length: usize,
 
     /// Set valid salt characters
