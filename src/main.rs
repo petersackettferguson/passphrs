@@ -38,40 +38,47 @@ struct Cli {
     #[clap(default_value = "0123456789", long = "sc")]
     salt_chars: String,
 
-    /// Set word case. 0: lowercase, 1: capitalized, 2: uppercase
-    #[clap(default_value_t = 1, short, long, parse(try_from_str))]
+    /// Set word case. 0: no processing, 1: lowercase, 2: capitalized, 3: uppercase
+    #[clap(default_value_t = 2, short, long, parse(try_from_str))]
     case: usize,
 
     /// Use a custom word list at the given location
     #[clap(short, long, value_name="FILE")]
     path: Option<String>,
+
+    /// Don't process the word list. Disables case.
+    #[clap(long, parse(from_flag))]
+    raw: bool,
 }
 
-#[derive(Debug, Error)]
-pub enum PassphraseError {
-    #[error("Initialization error: {0}")]
-    InitializationError(String),
-    #[error("Generation error: {0}")]
-    GenerationError(String),
-    #[error("Output error: {0}")]
-    OutputError(String),
-}
-
-fn get_list(path: Option<&String>)
+fn get_list(path: Option<&String>, raw: bool)
     -> Result<Vec<String>> {
-    let raw: String = if let Some(path_) = path {
+    let file: String = if let Some(path_) = path {
         println!("Reading word list from {}...", path_);
         std::fs::read_to_string(path_)?
     } else {
         std::fs::read_to_string(DEFAULT_LIST)?
     };
 
-    let list = raw.lines();
-    Ok(list.map(|w| w
-                .trim_matches(|c: char| !c.is_alphabetic())
-                .to_ascii_lowercase())
-       .filter(|w| w.len() > 1)
-       .collect())
+    let i_list: Vec<&str> = file.lines().collect();
+    let o_list: Vec<String>;
+    if !raw {
+        o_list = i_list.iter()
+            .map(|w| w.chars().filter(|c| c.is_alphabetic()).collect::<String>()
+                 .to_ascii_lowercase())
+            .filter(|w| w.len() > 0)
+            .collect()
+    } else {
+        o_list = i_list.iter()
+            .map(|w| w.trim().to_string())
+            .filter(|w| w.len() > 0)
+            .collect()
+    }
+
+    if o_list.len() == 0 {
+        eprintln!("Word list has no words!");
+    }
+    Ok(o_list)
 }
 
 fn build_passphrase(
@@ -89,9 +96,9 @@ fn build_passphrase(
         if i == 0 {
             let mut word = list[rng.gen_range(0..list.len())].clone();
             match case {
-                0 => word.make_ascii_lowercase(),
-                1 => { word.get_mut(0..1).unwrap().make_ascii_uppercase()},
-                2 => word.make_ascii_uppercase(),
+                1 => word.make_ascii_lowercase(),
+                2 => { word.get_mut(0..1).unwrap().make_ascii_uppercase()},
+                3 => word.make_ascii_uppercase(),
                 _ => {}
             };
 
@@ -99,9 +106,9 @@ fn build_passphrase(
         } else {
             let mut word = list[rng.gen_range(0..list.len())].clone();
             match case {
-                0 => word.make_ascii_lowercase(),
-                1 => { word.get_mut(0..1).unwrap().make_ascii_uppercase()},
-                2 => word.make_ascii_uppercase(),
+                1 => word.make_ascii_lowercase(),
+                2 => { word.get_mut(0..1).unwrap().make_ascii_uppercase()},
+                3 => word.make_ascii_uppercase(),
                 _ => {}
             };
 
@@ -144,11 +151,11 @@ fn main() -> Result<()> {
     let salt_length = cli.salt_length.clone();
     let salt_chars = cli.salt_chars.clone();
     let case = cli.case.clone();
+    let raw = cli.raw.clone();
 
     if cli.debug > 0 { eprintln!("{:?}", cli.clone()) };
 
-    let word_list_result = get_list(
-        cli.path.as_ref());
+    let word_list_result = get_list(cli.path.as_ref(), raw);
 
     let word_list = word_list_result?;
 
@@ -165,7 +172,7 @@ fn main() -> Result<()> {
             &separator, 
             salt_length, 
             &salt_chars, 
-            case);
+            if raw { 0 } else { case });
 
         println!("DO NOT USE THIS PASSPHRASE. Most shells log their history in an unencrypted file. Instead run this program in the standard mode to copy a passphrase directly to your clipboard.");
         println!();
@@ -181,7 +188,7 @@ fn main() -> Result<()> {
             &separator, 
             salt_length, 
             &salt_chars, 
-            case)) {
+            if raw { 0 } else { case })) {
             eprintln!("Could not set clipboard contents: {}", err_);
         };
 
